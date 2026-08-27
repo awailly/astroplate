@@ -11,6 +11,10 @@ Inkplate display;
 // Store int in rtc data, to remain persistent during deep sleep, reset on power up.
 RTC_DATA_ATTR uint bootCount = 0;
 
+// The Inkplate 2 cannot measure its battery, so the footer shows uptime
+// since the last power loss instead: a fresh battery starts at "up 0h".
+RTC_DATA_ATTR time_t powerOnEpoch = 0;
+
 // Everything runs in setup(): the device wakes from deep sleep, refreshes the
 // display and goes back to sleep, so loop() is never reached.
 void gotoSleep(uint32_t minutes)
@@ -106,6 +110,10 @@ void setup()
         renderError("No clock\nNTP sync failed");
         gotoSleep(TIME_TO_SLEEP_ERROR_MIN);
     }
+
+    // anchor the uptime counter on the first boot with a valid clock
+    if (powerOnEpoch == 0)
+        powerOnEpoch = time(nullptr);
 
     // Ephemeris first, it is local-only and the forecast grid starts at
     // dusk: Moon and planets at OBS_HOUR tonight, dusk searched from

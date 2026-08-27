@@ -18,6 +18,10 @@
 
 extern Inkplate display;
 
+// epoch of the first boot with a valid clock after a power loss (RTC memory
+// survives deep sleep but not power loss); 0 until then
+extern time_t powerOnEpoch;
+
 enum Verdict
 {
     VERDICT_GO = 0,

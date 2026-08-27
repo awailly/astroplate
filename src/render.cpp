@@ -178,6 +178,20 @@ static void drawFooter(time_t dusk)
         display.print(text);
     }
 
+    // uptime since the last power loss: the closest thing to a battery
+    // gauge this board can offer (no battery voltage measurement on the
+    // Inkplate 2)
+    if (powerOnEpoch > 0)
+    {
+        long hours = (long)(time(nullptr) - powerOnEpoch) / 3600;
+        char uptime[16];
+        if (hours >= 48)
+            snprintf(uptime, sizeof(uptime), "up %ldd", hours / 24);
+        else
+            snprintf(uptime, sizeof(uptime), "up %ldh", hours);
+        printCentered(uptime, SCREEN_WIDTH / 2, FOOTER_Y);
+    }
+
     struct tm timeInfo;
     if (getLocalTime(&timeInfo, 100))
     {

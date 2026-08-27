@@ -33,7 +33,8 @@ dark 22:00      27/08 18:05
 - **Sky line** — Moon illumination and whether it is up at `OBS_HOUR`, then
   the two highest planets (of Venus, Mars, Jupiter, Saturn) above
   `PLANET_MIN_ALT` with their altitude in degrees.
-- **Footer** — exact time of darkness and the last update time.
+- **Footer** — exact time of darkness, uptime since last power loss (see
+  Battery), and the last update time.
 
 ## Verdict
 
@@ -94,8 +95,11 @@ glance. All thresholds live in `config.h`.
 ## Battery
 
 The Inkplate 2 cannot measure its battery voltage (unlike the bigger
-Inkplates), so no battery indicator is shown. With 3-hourly refreshes and
-deep sleep in between, a 600 mAh cell should last several months.
+Inkplates), so no battery gauge is possible. Instead the footer shows an
+uptime counter (`up 12d`): time since the last power loss, kept in RTC
+memory across deep sleeps. Once you know how long a charge lasts, it doubles
+as a "recharge soon" indicator. With ~28 s awake per refresh every 3 h (the
+red e-paper is slow), a 600 mAh cell should last a few months.
 
 ## Project layout
 
