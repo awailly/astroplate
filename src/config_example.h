@@ -14,11 +14,11 @@
 #define LATITUDE 48.9202
 #define LONGITUDE 1.9693
 
-// Tonight's forecast window in local hours: cloud cover is averaged and the
-// worst seeing kept between WINDOW_START_HOUR today and WINDOW_END_HOUR
-// tomorrow
-#define WINDOW_START_HOUR 21
-#define WINDOW_END_HOUR 3
+// Forecast grid: FORECAST_SLOTS columns, one every FORECAST_SLOT_HOURS hours,
+// starting at the first full hour of darkness (Sun below DUSK_SUN_ALT).
+// The verdict is computed over these slots.
+#define FORECAST_SLOTS 4
+#define FORECAST_SLOT_HOURS 2
 
 // Local hour the Moon and planet altitudes are computed for
 #define OBS_HOUR 23

@@ -13,23 +13,36 @@ to `config.h`, deep sleep between refreshes.
 
 ## Display
 
-- **Top row** — the verdict for tonight, big, **red when NO GO**, next to the
-  average cloud cover and the worst seeing (arc seconds) over the night.
-- **Bottom row** — Moon illumination and whether it is up at `OBS_HOUR`, then
-  the planets (Venus, Mars, Jupiter, Saturn) above `PLANET_MIN_ALT` with
-  their altitude in degrees, highest first.
-- **Footer** — time of darkness (Sun below `DUSK_SUN_ALT`) and the last
-  update time.
+```
+GO   | 22h  00h  02h  04h
+-----+-------------------
+Cld% |  12   25   75   90
+See" | 0.75 1.25 1.25 2.5+
+Mag  | 0.4  0.5  0.6  1+
+---------------------------
+Moon 100% up        Sat 28
+dark 22:00      27/08 18:05
+```
+
+- **Grid** — one column every `FORECAST_SLOT_HOURS` (default 2 h), starting
+  at the first full hour of darkness (Sun below `DUSK_SUN_ALT`). Rows: cloud
+  cover (%), seeing (arc seconds, upper bound of the 7Timer code) and
+  transparency (magnitudes of extinction per air mass — lower is better).
+  Cells at NO GO levels are red.
+- **Verdict** — top-left corner: `GO` / `RISK` / `NO`, red when `NO`.
+- **Sky line** — Moon illumination and whether it is up at `OBS_HOUR`, then
+  the two highest planets (of Venus, Mars, Jupiter, Saturn) above
+  `PLANET_MIN_ALT` with their altitude in degrees.
+- **Footer** — exact time of darkness and the last update time.
 
 ## Verdict
 
-Computed over tonight's window (`WINDOW_START_HOUR` → `WINDOW_END_HOUR`,
-default 21:00 → 03:00):
+Computed over the displayed slots (default: dark → dark + 8 h):
 
-- **NO GO** — precipitation forecast, thunderstorm risk (lifted index ≤ −4),
+- **NO** — precipitation forecast, thunderstorm risk (lifted index ≤ −4),
   or average cloud cover ≥ 50%
 - **GO** — average cloud cover ≤ 25% and seeing better than ~2"
-- **MAYBE** — everything in between
+- **RISK** — everything in between
 
 The Moon does not gate the verdict: it barely matters for planetary and lunar
 work. Its illumination is displayed so deep-sky nights can be ruled out at a

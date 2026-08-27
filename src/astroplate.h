@@ -25,14 +25,21 @@ enum Verdict
     VERDICT_NOGO = 2,
 };
 
-struct Forecast
+struct ForecastSlot
 {
     bool valid;
-    int cloudsPct;        // average cloud cover over tonight's window, percent
-    int seeingCode;       // worst 7Timer seeing code of the window (1-8, lower is better)
-    int transparencyCode; // worst 7Timer transparency code (1-8, lower is better)
-    bool precipitation;   // any rain/snow forecast during the window
-    bool stormRisk;       // lifted index at or below LIFTED_INDEX_NOGO in the window
+    int hour;       // local hour this column stands for
+    int cloudsPct;  // cloud cover, percent
+    int seeingCode; // 7Timer seeing code (1-8, lower is better)
+    int transpCode; // 7Timer transparency code (1-8, lower is better)
+};
+
+struct Forecast
+{
+    bool valid;                        // at least one slot filled
+    ForecastSlot slots[FORECAST_SLOTS]; // one column every FORECAST_SLOT_HOURS from dark
+    bool precipitation;                // any rain/snow in the displayed slots
+    bool stormRisk;                    // lifted index at or below LIFTED_INDEX_NOGO
     Verdict verdict;
 };
 
@@ -56,8 +63,8 @@ void wifiDisconnect();
 bool syncTime();
 
 // forecast.cpp
-bool fetchForecast(Forecast &f);
-bool fetchForecastRetry(Forecast &f, uint32_t trys);
+bool fetchForecast(Forecast &f, time_t nightStart);
+bool fetchForecastRetry(Forecast &f, time_t nightStart, uint32_t trys);
 
 // ephem.cpp
 void computeEphemeris(time_t obsTime, Ephemeris &eph);

@@ -107,14 +107,18 @@ void setup()
         gotoSleep(TIME_TO_SLEEP_ERROR_MIN);
     }
 
-    Forecast forecast = {};
-    fetchForecastRetry(forecast, 3);
-
-    // Ephemeris is computed locally, no network needed: Moon and planets at
-    // OBS_HOUR tonight, and nautical dusk searched from mid-afternoon on.
+    // Ephemeris first, it is local-only and the forecast grid starts at
+    // dusk: Moon and planets at OBS_HOUR tonight, dusk searched from
+    // mid-afternoon on.
     Ephemeris eph = {};
     computeEphemeris(tonightAt(OBS_HOUR), eph);
     eph.dusk = findDusk(tonightAt(15));
+
+    // grid columns start at the first full hour of darkness
+    time_t nightStart = eph.dusk ? ((eph.dusk + 3599) / 3600) * 3600 : tonightAt(22);
+
+    Forecast forecast = {};
+    fetchForecastRetry(forecast, nightStart, 3);
 
     // Even with no forecast the Moon/planets half is worth showing; the
     // verdict renders as "?" and we retry on the error interval.

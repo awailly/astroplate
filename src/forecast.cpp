@@ -29,27 +29,10 @@ static time_t parseInit(const char *init)
     return (time_t)(jdn - 2440588L) * 86400 + (time_t)hh * 3600;
 }
 
-// Tonight's observation window in local time: WINDOW_START_HOUR today to
-// WINDOW_END_HOUR tomorrow. Past midnight the ongoing night still counts.
-static void tonightWindow(time_t &start, time_t &end)
-{
-    time_t now = time(nullptr);
-    struct tm lt;
-    localtime_r(&now, &lt);
-    if (lt.tm_hour < 6)
-    {
-        time_t yesterday = now - 24 * 3600;
-        localtime_r(&yesterday, &lt);
-    }
-    lt.tm_hour = WINDOW_START_HOUR;
-    lt.tm_min = 0;
-    lt.tm_sec = 0;
-    lt.tm_isdst = -1;
-    start = mktime(&lt);
-    end = start + ((24 + WINDOW_END_HOUR - WINDOW_START_HOUR) % 24) * 3600L;
-}
-
-bool fetchForecast(Forecast &f)
+// Fill the forecast grid: one slot every FORECAST_SLOT_HOURS starting at
+// nightStart, each taking the nearest 3h block (within 1.5h). The verdict
+// is computed over the filled slots.
+bool fetchForecast(Forecast &f, time_t nightStart)
 {
     f.valid = false;
 
@@ -110,64 +93,79 @@ bool fetchForecast(Forecast &f)
         return false;
     }
 
-    time_t start, end;
-    tonightWindow(start, end);
-
-    // Average the clouds and keep the worst seeing/transparency over the
-    // blocks that fall in tonight's window (blocks are 3h wide, so accept
-    // one hour of slack on each side).
-    int n = 0, cloudSum = 0, worstSeeing = 0, worstTransp = 0;
+    JsonArray series = doc["dataseries"].as<JsonArray>();
+    int n = 0, cloudSum = 0, worstSeeing = 0;
     bool precip = false, storm = false;
-    for (JsonObject p : doc["dataseries"].as<JsonArray>())
+    for (int i = 0; i < FORECAST_SLOTS; i++)
     {
-        time_t t = initEpoch + (long)(p["timepoint"] | 0) * 3600;
-        if (t < start - 3600 || t > end + 3600)
+        ForecastSlot &s = f.slots[i];
+        time_t target = nightStart + (time_t)i * FORECAST_SLOT_HOURS * 3600;
+        struct tm lt;
+        localtime_r(&target, &lt);
+        s.valid = false;
+        s.hour = lt.tm_hour;
+
+        JsonObject best;
+        long bestDiff = 5400 + 1; // half a 3h block, else the slot stays empty
+        for (JsonObject p : series)
+        {
+            long diff = labs((long)(initEpoch + (long)(p["timepoint"] | 0) * 3600 - target));
+            if (diff < bestDiff)
+            {
+                bestDiff = diff;
+                best = p;
+            }
+        }
+        if (best.isNull())
             continue;
-        int cc = p["cloudcover"] | 0;
+
+        int cc = best["cloudcover"] | 0;
         if (cc < 1 || cc > 9)
             continue;
-        cloudSum += CLOUD_PCT[cc];
+        s.cloudsPct = CLOUD_PCT[cc];
+        s.seeingCode = best["seeing"] | 0;
+        s.transpCode = best["transparency"] | 0;
+        s.valid = true;
+
+        cloudSum += s.cloudsPct;
         n++;
-        worstSeeing = max(worstSeeing, (int)(p["seeing"] | 0));
-        worstTransp = max(worstTransp, (int)(p["transparency"] | 0));
+        worstSeeing = max(worstSeeing, s.seeingCode);
         // lifted index: atmospheric stability, strongly negative -> thunderstorms
-        if ((int)(p["lifted_index"] | 0) <= LIFTED_INDEX_NOGO)
+        if ((int)(best["lifted_index"] | 0) <= LIFTED_INDEX_NOGO)
             storm = true;
-        const char *prec = p["prec_type"] | "none";
+        const char *prec = best["prec_type"] | "none";
         if (strcmp(prec, "none") != 0)
             precip = true;
     }
 
     if (n == 0)
     {
-        Serial.println("[FORECAST] no data points in tonight's window");
+        Serial.println("[FORECAST] no data blocks near tonight's slots");
         return false;
     }
 
-    f.cloudsPct = cloudSum / n;
-    f.seeingCode = worstSeeing;
-    f.transparencyCode = worstTransp;
     f.precipitation = precip;
     f.stormRisk = storm;
 
-    if (precip || storm || f.cloudsPct >= CLOUDS_NOGO_MIN_PCT)
+    int cloudsAvg = cloudSum / n;
+    if (precip || storm || cloudsAvg >= CLOUDS_NOGO_MIN_PCT)
         f.verdict = VERDICT_NOGO;
-    else if (f.cloudsPct <= CLOUDS_GO_MAX_PCT && f.seeingCode < SEEING_MAYBE_CODE)
+    else if (cloudsAvg <= CLOUDS_GO_MAX_PCT && worstSeeing < SEEING_MAYBE_CODE)
         f.verdict = VERDICT_GO;
     else
         f.verdict = VERDICT_MAYBE;
 
     f.valid = true;
-    Serial.printf("[FORECAST] %d block(s): clouds %d%%, seeing %d/8, transparency %d/8, precip %d, storm %d -> verdict %d\n",
-                  n, f.cloudsPct, f.seeingCode, f.transparencyCode, precip, storm, f.verdict);
+    Serial.printf("[FORECAST] %d slot(s): clouds avg %d%%, worst seeing %d/8, precip %d, storm %d -> verdict %d\n",
+                  n, cloudsAvg, worstSeeing, precip, storm, f.verdict);
     return true;
 }
 
-bool fetchForecastRetry(Forecast &f, uint32_t trys)
+bool fetchForecastRetry(Forecast &f, time_t nightStart, uint32_t trys)
 {
     for (uint32_t i = 0; i < trys; i++)
     {
-        if (fetchForecast(f))
+        if (fetchForecast(f, nightStart))
             return true;
         // wait before trying again
         delay(1 * SECOND);
