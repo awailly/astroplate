@@ -33,6 +33,11 @@
 // (7 = seeing worse than 2", hopeless for planetary work)
 #define SEEING_MAYBE_CODE 7
 
+// NO GO when the lifted index (atmospheric stability, degrees C) drops to
+// this value or below: -4 or less means real thunderstorm risk, no night to
+// leave a telescope out. 7Timer codes: -10, -6, -4, -1, 2, 6, 10, 15
+#define LIFTED_INDEX_NOGO -4
+
 // Only planets above this altitude (degrees) at OBS_HOUR are shown
 #define PLANET_MIN_ALT 10
 

@@ -41,8 +41,9 @@ static void drawVerdictRow(const Forecast &f)
     char cond[40];
     if (!f.valid)
         strlcpy(cond, "no forecast", sizeof(cond));
-    else if (f.precipitation)
-        snprintf(cond, sizeof(cond), "%d%% cloud, rain", f.cloudsPct);
+    else if (f.precipitation || f.stormRisk)
+        snprintf(cond, sizeof(cond), "%d%% cloud, %s", f.cloudsPct,
+                 f.stormRisk ? "storm" : "rain");
     else
         snprintf(cond, sizeof(cond), "%d%% cloud  %s", f.cloudsPct,
                  (f.seeingCode >= 1 && f.seeingCode <= 8) ? SEEING_TEXT[f.seeingCode] : "?");

@@ -32,6 +32,7 @@ struct Forecast
     int seeingCode;       // worst 7Timer seeing code of the window (1-8, lower is better)
     int transparencyCode; // worst 7Timer transparency code (1-8, lower is better)
     bool precipitation;   // any rain/snow forecast during the window
+    bool stormRisk;       // lifted index at or below LIFTED_INDEX_NOGO in the window
     Verdict verdict;
 };
 

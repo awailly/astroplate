@@ -26,7 +26,8 @@ to `config.h`, deep sleep between refreshes.
 Computed over tonight's window (`WINDOW_START_HOUR` → `WINDOW_END_HOUR`,
 default 21:00 → 03:00):
 
-- **NO GO** — precipitation forecast, or average cloud cover ≥ 50%
+- **NO GO** — precipitation forecast, thunderstorm risk (lifted index ≤ −4),
+  or average cloud cover ≥ 50%
 - **GO** — average cloud cover ≤ 25% and seeing better than ~2"
 - **MAYBE** — everything in between
 

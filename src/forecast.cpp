@@ -92,6 +92,7 @@ bool fetchForecast(Forecast &f)
     pointFilter["cloudcover"] = true;
     pointFilter["seeing"] = true;
     pointFilter["transparency"] = true;
+    pointFilter["lifted_index"] = true;
     pointFilter["prec_type"] = true;
 
     JsonDocument doc;
@@ -116,7 +117,7 @@ bool fetchForecast(Forecast &f)
     // blocks that fall in tonight's window (blocks are 3h wide, so accept
     // one hour of slack on each side).
     int n = 0, cloudSum = 0, worstSeeing = 0, worstTransp = 0;
-    bool precip = false;
+    bool precip = false, storm = false;
     for (JsonObject p : doc["dataseries"].as<JsonArray>())
     {
         time_t t = initEpoch + (long)(p["timepoint"] | 0) * 3600;
@@ -129,6 +130,9 @@ bool fetchForecast(Forecast &f)
         n++;
         worstSeeing = max(worstSeeing, (int)(p["seeing"] | 0));
         worstTransp = max(worstTransp, (int)(p["transparency"] | 0));
+        // lifted index: atmospheric stability, strongly negative -> thunderstorms
+        if ((int)(p["lifted_index"] | 0) <= LIFTED_INDEX_NOGO)
+            storm = true;
         const char *prec = p["prec_type"] | "none";
         if (strcmp(prec, "none") != 0)
             precip = true;
@@ -144,8 +148,9 @@ bool fetchForecast(Forecast &f)
     f.seeingCode = worstSeeing;
     f.transparencyCode = worstTransp;
     f.precipitation = precip;
+    f.stormRisk = storm;
 
-    if (precip || f.cloudsPct >= CLOUDS_NOGO_MIN_PCT)
+    if (precip || storm || f.cloudsPct >= CLOUDS_NOGO_MIN_PCT)
         f.verdict = VERDICT_NOGO;
     else if (f.cloudsPct <= CLOUDS_GO_MAX_PCT && f.seeingCode < SEEING_MAYBE_CODE)
         f.verdict = VERDICT_GO;
@@ -153,8 +158,8 @@ bool fetchForecast(Forecast &f)
         f.verdict = VERDICT_MAYBE;
 
     f.valid = true;
-    Serial.printf("[FORECAST] %d block(s): clouds %d%%, seeing %d/8, transparency %d/8, precip %d -> verdict %d\n",
-                  n, f.cloudsPct, f.seeingCode, f.transparencyCode, precip, f.verdict);
+    Serial.printf("[FORECAST] %d block(s): clouds %d%%, seeing %d/8, transparency %d/8, precip %d, storm %d -> verdict %d\n",
+                  n, f.cloudsPct, f.seeingCode, f.transparencyCode, precip, storm, f.verdict);
     return true;
 }
 
